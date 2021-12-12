@@ -59,7 +59,7 @@ st.button(label="Clear Result", key="clear_result", on_click=cleanup_result_file
 
 # RESULT
 downloadable_result = False
-if Path(FP_RESULT).exists():
+if (executable) and (Path(FP_RESULT).exists()):
     downloadable_result = True
 if downloadable_result:
     with open(FP_RESULT, 'rb') as f:
@@ -70,7 +70,7 @@ if downloadable_result:
 
 # FAILED STUDENTS
 downloadable_failed_st = False
-if Path(FP_FAILED_STUDENTS).exists():
+if (executable) and (Path(FP_FAILED_STUDENTS).exists()):
     downloadable_failed_st = True
 if downloadable_failed_st:
     with open(FP_FAILED_STUDENTS, 'rb') as f:
@@ -81,7 +81,7 @@ if downloadable_failed_st:
 
 # REST DONGURI ACCOUNTS
 downloadable_rest_acc = False
-if Path(FP_REST_DONGURI_ACC).exists():
+if (executable) and (Path(FP_REST_DONGURI_ACC).exists()):
     downloadable_rest_acc = True
 if downloadable_rest_acc:
     with open(FP_REST_DONGURI_ACC, 'rb') as f:
