@@ -1,0 +1,7 @@
+pandas
+jupyter
+jupyterlab
+streamlit
+watchdog
+openpyxl
+yapf
