@@ -7,8 +7,17 @@ import pandas as pd
 import streamlit as st
 
 from src.executor import ShiraishiExecutor
-from src.executor import FP_RESULT, FN_RESULT, FP_FAILED_STUDENTS, FN_FAILED_STUDENTS, FP_REST_DONGURI_ACC, FN_REST_DONGURI_ACC
+from src.executor import OUT_DIR, FP_RESULT, FN_RESULT, FP_FAILED_STUDENTS, FN_FAILED_STUDENTS, FP_REST_DONGURI_ACC, FN_REST_DONGURI_ACC
 
+
+# FUNCTIONS
+def cleanup_result_files():
+    _files = list(Path(OUT_DIR).glob('*'))
+    for _f in _files:
+        _f.unlink(missing_ok=True)
+
+
+# DISPLAY
 
 st.title('Students and Accounts Linking Automation')
 st.header('File Upload')
@@ -45,6 +54,8 @@ else:
 
 
 st.header('Download Files')
+
+st.button(label="Clear Result", key="clear_result", on_click=cleanup_result_files)
 
 # RESULT
 downloadable_result = False
