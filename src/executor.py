@@ -27,13 +27,15 @@ SHN_FAILED_STUDENTS_CMS: Final[str] = "購入情報-マッチング候補"
 
 FN_REST_DONGURI_ACC: Final[str] = "DONGURI残りのアカウント一覧.xlsx"
 FP_REST_DONGURI_ACC: Final[str] = f"{OUT_DIR}/{FN_REST_DONGURI_ACC}"
-SHN_REST_DONGURI_ACC_5DIC: Final[str] = "5辞書アカウント"
-SHN_REST_DONGURI_ACC_2DIC: Final[str] = "2辞書アカウント"
+SHN_REST_DONGURI_ACC_6DIC: Final[str] = "6辞書アカウント"
+SHN_REST_DONGURI_ACC_3DIC: Final[str] = "3辞書アカウント"
 
 
 @dataclass
 class BuyingDicType:
+    DIC_6: str='6辞書'
     DIC_5: str='5辞書'
+    DIC_3: str='3辞書'
     DIC_2: str='2辞書'
     DIC_NONE: str='購入しない'
     NULL: str='（手動で作成）'
@@ -58,6 +60,7 @@ class CmsData:
     def __init__(self, csv_file):
         self.load_prep(csv_file)
         self.cols = CmsData.CmsDataCols()
+        self.dictype = BuyingDicType()
 
     def load_prep(self, csv_file) -> None:
         self.data = pd.read_csv(
@@ -82,21 +85,12 @@ class CmsData:
         return self.data[self.cols.student_name].copy()
 
     def calc_dict_buy_type(self) -> None:
-        _dict_buy_5_flg = (self.data['同時購入品1NO'] > 0)
-        _dict_buy_2_flg = (self.data['同時購入品2NO'] > 0)
-        _dict_buy_n_flg = ~(_dict_buy_5_flg | _dict_buy_2_flg)
+        self.data[self.cols.prod_name] = self.data[self.cols.prod_name].str.replace(
+            pat="【アプリ版辞書】DONGURI(3辞書)", repl=self.dictype.DIC_3)
+        self.data[self.cols.prod_name] = self.data[self.cols.prod_name].str.replace(
+            pat="【アプリ版辞書】DONGURI(6辞書)", repl=self.dictype.DIC_6)
 
-        _dict_buy_type: List[str] = []
-        buying_dic_type = BuyingDicType()
-        for d5, d2, dno in zip(_dict_buy_5_flg, _dict_buy_2_flg, _dict_buy_n_flg):
-            _cur_type = buying_dic_type.DIC_NONE
-            if d5 == True:
-                _cur_type = buying_dic_type.DIC_5
-            elif d2 == True:
-                _cur_type = buying_dic_type.DIC_2
-            _dict_buy_type.append(_cur_type)
-
-        self.data['副教材タイプ'] = _dict_buy_type
+        self.data['副教材タイプ'] = self.data[self.cols.prod_name]
 
 
 class DonguriAccount:
@@ -144,10 +138,10 @@ class JiyuStudents:
 
 
 class ShiraishiExecutor:
-    def __init__(self, cms_file, dng5_file, dng2_file, jyg_file) -> None:
+    def __init__(self, cms_file, dng6_file, dng3_file, jyg_file) -> None:
         self._cms_data = CmsData(cms_file)
-        self._dongri_data_5dic = DonguriAccount(dng5_file)
-        self._dongri_data_2dic = DonguriAccount(dng2_file)
+        self._dongri_data_6dic = DonguriAccount(dng6_file)
+        self._dongri_data_3dic = DonguriAccount(dng3_file)
         self._jiyu_students = JiyuStudents(jyg_file)
         Path(OUT_DIR).mkdir(parents=True, exist_ok=True)
 
@@ -165,10 +159,10 @@ class ShiraishiExecutor:
         self._cms_data.data = self._cms_data.data[_newbee_flgs]
 
     def __calc_dic_buying_type(self):
-        """## 2. Calc Dictionary Buying Type (2dic or 5dic or None)
+        """## 2. Calc Dictionary Buying Type (3dic or 6dic or None)
 
-            - No1 - 5辞書
-            - No2 - 2辞書
+            - No1 - 6辞書
+            - No2 - 3辞書
         """
         self._cms_data.calc_dict_buy_type()
 
@@ -193,7 +187,7 @@ class ShiraishiExecutor:
         """## CONCAT/MERGE - DONGURI ACC and CMS-JYG
 
             ### Note
-            - アカウント数と生徒数を比べると、「5辞書、2辞書いずれも購入しない生徒」もいるようだ
+            - アカウント数と生徒数を比べると、「6辞書、3辞書いずれも購入しない生徒」もいるようだ
 
             ### Processes
             1. Checking
@@ -206,20 +200,20 @@ class ShiraishiExecutor:
         # -------------------------------------------------
         # 1. Checking
         # - `[memo]` 名前マッチングからテスト番号-学籍番号マッチングに変更することで、失敗数が84件から18件に減った。
-        # Split CMS-JYG into DIC_5/DIC_2/DIC_NONE
-        __merged_cms_jiyu_d5 = self._merged_cms_jiyu[self._merged_cms_jiyu['副教材タイプ'] == buying_dic_type.DIC_5].copy()
-        __merged_cms_jiyu_d2 = self._merged_cms_jiyu[self._merged_cms_jiyu['副教材タイプ'] == buying_dic_type.DIC_2].copy()
+        # Split CMS-JYG into DIC_6/DIC_3/DIC_NONE
+        __merged_cms_jiyu_d6 = self._merged_cms_jiyu[self._merged_cms_jiyu['副教材タイプ'] == buying_dic_type.DIC_6].copy()
+        __merged_cms_jiyu_d3 = self._merged_cms_jiyu[self._merged_cms_jiyu['副教材タイプ'] == buying_dic_type.DIC_3].copy()
         __merged_cms_jiyu_dN = self._merged_cms_jiyu[self._merged_cms_jiyu['副教材タイプ'] == buying_dic_type.DIC_NONE].copy()
         __merged_cms_jiyu_NaN = self._merged_cms_jiyu[self._merged_cms_jiyu['副教材タイプ'] == buying_dic_type.NULL].copy()
 
         _total_row = self._merged_cms_jiyu.shape[0]
 
-        print(f'== 同時購入品として5辞書、2辞書いずれかを選んだ生徒')
-        print(f'5辞書 購入者数 = {__merged_cms_jiyu_d5.shape[0]} / {_total_row} (準備済みアカウント数: {self._dongri_data_5dic.data.shape[0]})')
-        print(f'2辞書 購入者数 = {__merged_cms_jiyu_d2.shape[0]} / {_total_row} (準備済みアカウント数: {self._dongri_data_2dic.data.shape[0]})')
+        print(f'== 同時購入品として6辞書、3辞書いずれかを選んだ生徒')
+        print(f'6辞書 購入者数 = {__merged_cms_jiyu_d6.shape[0]} / {_total_row} (準備済みアカウント数: {self._dongri_data_6dic.data.shape[0]})')
+        print(f'3辞書 購入者数 = {__merged_cms_jiyu_d3.shape[0]} / {_total_row} (準備済みアカウント数: {self._dongri_data_3dic.data.shape[0]})')
         print()
 
-        print(f'== 同時購入品として5辞書、2辞書いずれかも選んでない生徒')
+        print(f'== 同時購入品として6辞書、3辞書いずれかも選んでない生徒')
         print(f'非購入者数 = {__merged_cms_jiyu_dN.shape[0]} / {_total_row}')
         print()
 
@@ -229,26 +223,26 @@ class ShiraishiExecutor:
 
         # -------------------------------------------------
         # 2. RESULTS1 - Attach account info to students rows
-        # dic 5
-        _acc_rows_d5 = self._dongri_data_5dic.get_head(__merged_cms_jiyu_d5.shape[0])
+        # dic 6
+        _acc_rows_d6 = self._dongri_data_6dic.get_head(__merged_cms_jiyu_d6.shape[0])
         # -- concat cols は index が一致するものをつなぐので整えておく
-        __merged_cms_jiyu_d5.reset_index(drop=True, inplace=True)
-        _acc_rows_d5.reset_index(drop=True, inplace=True)
-        _cms_jyg_acc_d5 = pd.concat([__merged_cms_jiyu_d5, _acc_rows_d5], axis=1) # axis=columns,1
+        __merged_cms_jiyu_d6.reset_index(drop=True, inplace=True)
+        _acc_rows_d6.reset_index(drop=True, inplace=True)
+        _cms_jyg_acc_d6 = pd.concat([__merged_cms_jiyu_d6, _acc_rows_d6], axis=1) # axis=columns,1
 
 
-        # dic 2
-        _acc_rows_d2 = self._dongri_data_2dic.get_head(__merged_cms_jiyu_d2.shape[0])
+        # dic 3
+        _acc_rows_d3 = self._dongri_data_3dic.get_head(__merged_cms_jiyu_d3.shape[0])
         # -- concat cols は index が一致するものをつなぐので整えておく
-        __merged_cms_jiyu_d2.reset_index(drop=True, inplace=True)
-        _acc_rows_d2.reset_index(drop=True, inplace=True)
-        _cms_jyg_acc_d2 = pd.concat([__merged_cms_jiyu_d2, _acc_rows_d2], axis=1) # axis=columns,1
+        __merged_cms_jiyu_d3.reset_index(drop=True, inplace=True)
+        _acc_rows_d3.reset_index(drop=True, inplace=True)
+        _cms_jyg_acc_d3 = pd.concat([__merged_cms_jiyu_d3, _acc_rows_d3], axis=1) # axis=columns,1
 
         # dic None
         # -- 不要
 
         # Concat vertically
-        self.cms_jyg_acc = pd.concat([_cms_jyg_acc_d5, _cms_jyg_acc_d2], axis=0) # axis=rows:0
+        self.cms_jyg_acc = pd.concat([_cms_jyg_acc_d6, _cms_jyg_acc_d3], axis=0) # axis=rows:0
         self.cms_jyg_acc.fillna(value="アカウント不足", inplace=True)
 
         # -------------------------------------------------
@@ -281,8 +275,8 @@ class ShiraishiExecutor:
                 - CMSに対応データが見つかったデータ（自動算出 **成功**）
                 - 学籍番号入力ミスなどにより、CMSに対応データが見つからなかったデータ（自動算出 **失敗**）
                     - ★手動オペレーションに利用
-                - 残りのアカウント情報 - 5辞書
-                - 残りのアカウント情報 - 2辞書
+                - 残りのアカウント情報 - 6辞書
+                - 残りのアカウント情報 - 3辞書
 
             ### Fmt
                 - Excel File: `学生情報・DONGURIアカウント情報紐付け結果一覧.xlsx`
@@ -292,8 +286,8 @@ class ShiraishiExecutor:
                     - Sheet: `生徒一覧` - RESULTS3
                     - Sheet: `購入情報-マッチング候補` - RESULTS3
                 - Excel File: `DONGURI残りのアカウント一覧.xlsx`
-                    - Sheet: `5辞書アカウント` - RESULTS4
-                    - Sheet: `2辞書アカウント` - RESULTS4
+                    - Sheet: `6辞書アカウント` - RESULTS4
+                    - Sheet: `3辞書アカウント` - RESULTS4
 
             https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_excel.html?highlight=to_excel#pandas.DataFrame.to_excel
         """
@@ -306,5 +300,5 @@ class ShiraishiExecutor:
             self._cms_newbee_unmatched.to_excel(writer, sheet_name=SHN_FAILED_STUDENTS_CMS, index=False)
 
         with pd.ExcelWriter(FP_REST_DONGURI_ACC) as writer:
-            self._dongri_data_5dic.get_rest_of().to_excel(writer, sheet_name=SHN_REST_DONGURI_ACC_5DIC, index=False)
-            self._dongri_data_2dic.get_rest_of().to_excel(writer, sheet_name=SHN_REST_DONGURI_ACC_2DIC, index=False)
+            self._dongri_data_6dic.get_rest_of().to_excel(writer, sheet_name=SHN_REST_DONGURI_ACC_6DIC, index=False)
+            self._dongri_data_3dic.get_rest_of().to_excel(writer, sheet_name=SHN_REST_DONGURI_ACC_3DIC, index=False)
