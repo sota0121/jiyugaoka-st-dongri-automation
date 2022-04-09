@@ -5,3 +5,5 @@ streamlit
 watchdog
 openpyxl
 yapf
+click
+chardet
