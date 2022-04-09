@@ -22,7 +22,7 @@ def cleanup_result_files():
 st.title('Students and Accounts Linking Automation')
 st.header('File Upload')
 
-st.subheader('1. CMS DATA (CSV/SHIFT-JIS)')
+st.subheader('1. CMS DATA (CSV/UTF-8)')
 _cms_file = st.file_uploader(label="Choose a file", key="cms_data")
 
 st.subheader('2. DONGURI DATA (EXCEL/SHIFT-JIS) - 5辞書')

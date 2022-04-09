@@ -26,7 +26,7 @@ def to_utf8(input: str, output: str):
 
     df = pd.read_csv(input, encoding=encoding)
     output_path = output if output is not None else ".".join([input, "utf8.csv"])
-    df.to_csv(output_path, encoding="utf-8")
+    df.to_csv(output_path, encoding="utf-8", index=False)
     click.echo("Done")
 
 

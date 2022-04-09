@@ -1,9 +1,12 @@
 """Main Process Executor"""
 
+from atexit import register
 from dataclasses import dataclass
 from enum import IntEnum
 from io import FileIO
 from pathlib import Path
+from re import X
+from tkinter import Y
 from typing import List, Tuple, Final
 
 import pandas as pd
@@ -39,26 +42,44 @@ buying_dic_type = BuyingDicType()
 
 
 class CmsData:
+
+    @dataclass
+    class CmsDataCols:
+        id: str = "ID"
+        student_id: str = "学籍番号"
+        student_name: str = "生徒名"
+        student_name_kana: str = "生徒名（カナ）"
+        email: str = "メールアドレス"
+        registered: str = "registered"
+        school_id: str = "学校ID"
+        cur_school_year: str = "現在の学年"
+        prod_name: str = "商品名"
+
     def __init__(self, csv_file):
         self.load_prep(csv_file)
+        self.cols = CmsData.CmsDataCols()
 
     def load_prep(self, csv_file) -> None:
-        self.data = pd.read_csv(csv_file, encoding="shift-jis")
+        self.data = pd.read_csv(
+            csv_file,
+            names=self.cols,
+            encoding="utf-8")
+
         # prep : XXX(kana) --> XXX
-        _temp = self.data['生徒名'].copy()
+        _temp = self.data[self.cols.student_name].copy()
         _temp = _temp.str.split('(', expand=True)[0] # exclude (kana)
         _temp = _temp.str.strip() # remove white space
         _temp = _temp.str.replace("　", "") # remove ZENKAKU space
-        self.data['生徒名'] = _temp.copy()
+        self.data[self.cols.student_name] = _temp.copy()
 
     def get_student_id(self) -> pd.Series:
         return self.data[self.join_target_col()].copy()
 
     def join_target_col(self) -> str:
-        return '学籍番号'
+        return self.cols.student_id
 
     def get_names(self) -> pd.Series:
-        return self.data['生徒名'].copy()
+        return self.data[self.cols.student_name].copy()
 
     def calc_dict_buy_type(self) -> None:
         _dict_buy_5_flg = (self.data['同時購入品1NO'] > 0)
