@@ -1,11 +1,11 @@
 """Main Process Executor"""
 
 from atexit import register
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from enum import IntEnum
 from io import FileIO
 from pathlib import Path
-from re import X
+from re import X, sub
 from tkinter import Y
 from typing import List, Tuple, Final
 
@@ -43,30 +43,35 @@ class BuyingDicType:
 buying_dic_type = BuyingDicType()
 
 
+@dataclass
+class CmsDataCols:
+    id: str = "ID"
+    student_id: str = "学籍番号"
+    student_name: str = "生徒名"
+    student_name_kana: str = "生徒名（カナ）"
+    email: str = "メールアドレス"
+    registered: str = "registered"
+    school_id: str = "学校ID"
+    cur_school_year: str = "現在の学年"
+    prod_name: str = "商品名"
+
+DICTYPE_COL_NAME: Final[str] = "副教材タイプ"
+
+
 class CmsData:
 
-    @dataclass
-    class CmsDataCols:
-        id: str = "ID"
-        student_id: str = "学籍番号"
-        student_name: str = "生徒名"
-        student_name_kana: str = "生徒名（カナ）"
-        email: str = "メールアドレス"
-        registered: str = "registered"
-        school_id: str = "学校ID"
-        cur_school_year: str = "現在の学年"
-        prod_name: str = "商品名"
-
     def __init__(self, csv_file):
-        self.load_prep(csv_file)
-        self.cols = CmsData.CmsDataCols()
+        self.cols = CmsDataCols()
         self.dictype = BuyingDicType()
+        self.load_prep(csv_file)
 
     def load_prep(self, csv_file) -> None:
+        col_names = list(asdict(self.cols).values())
         self.data = pd.read_csv(
             csv_file,
-            names=self.cols,
+            names=col_names,
             encoding="utf-8")
+        self.data.drop_duplicates(subset=[self.cols.student_id], inplace=True)
 
         # prep : XXX(kana) --> XXX
         _temp = self.data[self.cols.student_name].copy()
@@ -90,7 +95,7 @@ class CmsData:
         self.data[self.cols.prod_name] = self.data[self.cols.prod_name].str.replace(
             pat="【アプリ版辞書】DONGURI(6辞書)", repl=self.dictype.DIC_6)
 
-        self.data['副教材タイプ'] = self.data[self.cols.prod_name]
+        self.data[DICTYPE_COL_NAME] = self.data[self.cols.prod_name]
 
 
 class DonguriAccount:
@@ -111,8 +116,20 @@ class DonguriAccount:
         return self.data.tail(self.get_rest_acc_num())
 
 
+
+@dataclass
+class JiyuStuCols:
+    exam_id: str = "テスト番号"
+    course_name: str = "コース"
+    class_name: str = "クラス"
+    student_name: str = "氏　名"
+    student_name_kana: str = "フリガナ"
+    sex_type: str = "性別"
+
+
 class JiyuStudents:
     def __init__(self, csv_file):
+        self.cols = JiyuStuCols()
         self.load_prep(csv_file)
 
     def load_prep(self, csv_file) -> None:
@@ -131,17 +148,19 @@ class JiyuStudents:
         return self.data[self.get_name_col_name()].copy()
 
     def get_name_col_name(self) -> str:
-        return '氏\u3000名'
+        return self.cols.student_name
 
     def join_target_col(self) -> str:
-        return 'テスト番号'
+        return self.cols.exam_id
 
 
 class ShiraishiExecutor:
     def __init__(self, cms_file, dng6_file, dng3_file, jyg_file) -> None:
+        self._cms_cols = CmsDataCols()
         self._cms_data = CmsData(cms_file)
         self._dongri_data_6dic = DonguriAccount(dng6_file)
         self._dongri_data_3dic = DonguriAccount(dng3_file)
+        self._jiyu_stu_cols = JiyuStuCols()
         self._jiyu_students = JiyuStudents(jyg_file)
         Path(OUT_DIR).mkdir(parents=True, exist_ok=True)
 
@@ -155,7 +174,7 @@ class ShiraishiExecutor:
     def __extract_newbee_from_cmsdata(self):
         """## 1. Extract Newbee from CmsData
         """
-        _newbee_flgs = self._cms_data.data['教科書タイトル'].str.contains('1年')
+        _newbee_flgs = (self._cms_data.data[self._cms_cols.cur_school_year] == 0)
         self._cms_data.data = self._cms_data.data[_newbee_flgs]
 
     def __calc_dic_buying_type(self):
@@ -176,11 +195,13 @@ class ShiraishiExecutor:
                                     right_on=self._cms_data.join_target_col())
 
         # extract cols
-        __target_cols = ['テスト番号', '合格学科', 'クラス２', '出席番号', '氏　名', 'id', '学籍番号', '生徒名', '教科書タイトル', '副教材タイプ']
+        __target_cols = [self._jiyu_stu_cols.exam_id, self._jiyu_stu_cols.course_name, self._jiyu_stu_cols.class_name, self._jiyu_stu_cols.student_name,
+                         self._cms_cols.id, self._cms_cols.student_id, self._cms_cols.student_name, DICTYPE_COL_NAME]
+        # 2021 sample data ==> __target_cols = ['テスト番号', '合格学科', 'クラス２', '出席番号', '氏　名', 'id', '学籍番号', '生徒名', '教科書タイトル', '副教材タイプ']
         self._merged_cms_jiyu = self._merged_cms_jiyu[__target_cols]
 
         # '副教材タイプ' fill na -> BuyingDicType.NULL
-        self._merged_cms_jiyu['副教材タイプ'].fillna(buying_dic_type.NULL, inplace=True)
+        self._merged_cms_jiyu[DICTYPE_COL_NAME].fillna(buying_dic_type.NULL, inplace=True)
 
 
     def __concat_donguri_acc_and_cmsjyg(self):
@@ -201,10 +222,10 @@ class ShiraishiExecutor:
         # 1. Checking
         # - `[memo]` 名前マッチングからテスト番号-学籍番号マッチングに変更することで、失敗数が84件から18件に減った。
         # Split CMS-JYG into DIC_6/DIC_3/DIC_NONE
-        __merged_cms_jiyu_d6 = self._merged_cms_jiyu[self._merged_cms_jiyu['副教材タイプ'] == buying_dic_type.DIC_6].copy()
-        __merged_cms_jiyu_d3 = self._merged_cms_jiyu[self._merged_cms_jiyu['副教材タイプ'] == buying_dic_type.DIC_3].copy()
-        __merged_cms_jiyu_dN = self._merged_cms_jiyu[self._merged_cms_jiyu['副教材タイプ'] == buying_dic_type.DIC_NONE].copy()
-        __merged_cms_jiyu_NaN = self._merged_cms_jiyu[self._merged_cms_jiyu['副教材タイプ'] == buying_dic_type.NULL].copy()
+        __merged_cms_jiyu_d6 = self._merged_cms_jiyu[self._merged_cms_jiyu[DICTYPE_COL_NAME] == buying_dic_type.DIC_6].copy()
+        __merged_cms_jiyu_d3 = self._merged_cms_jiyu[self._merged_cms_jiyu[DICTYPE_COL_NAME] == buying_dic_type.DIC_3].copy()
+        __merged_cms_jiyu_dN = self._merged_cms_jiyu[self._merged_cms_jiyu[DICTYPE_COL_NAME] == buying_dic_type.DIC_NONE].copy()
+        __merged_cms_jiyu_NaN = self._merged_cms_jiyu[self._merged_cms_jiyu[DICTYPE_COL_NAME] == buying_dic_type.NULL].copy()
 
         _total_row = self._merged_cms_jiyu.shape[0]
 
@@ -253,17 +274,29 @@ class ShiraishiExecutor:
         # -------------------------------------------------
         # 4. RESULTS3 - To Manual Operate Data
         # CMSデータとマッチングできなかった jyg データ
-        self.jyg_manual_operate = __merged_cms_jiyu_NaN[['テスト番号', '合格学科', 'クラス２', '出席番号', '氏　名']].copy()
+        _jyg_target_cols = [
+            self._jiyu_stu_cols.exam_id,
+            self._jiyu_stu_cols.course_name,
+            self._jiyu_stu_cols.class_name,
+            self._jiyu_stu_cols.student_name
+        ]
+        self.jyg_manual_operate = __merged_cms_jiyu_NaN[_jyg_target_cols].copy()
+        # 2021 sample --> self.jyg_manual_operate = __merged_cms_jiyu_NaN[['テスト番号', '合格学科', 'クラス２', '出席番号', '氏　名']].copy()
         self.jyg_manual_operate.reset_index(drop=True, inplace=True)
 
         # jyg データとマッチングしていない CMSデータ（新1年のみ、前処理で抽出済み）
         # -- マッチング成功した '学籍番号' 一覧取得
         _successfully_matched_ids = []
-        _successfully_matched_ids.extend(self.cms_jyg_acc['学籍番号'].values)
-        _successfully_matched_ids.extend(self.cms_jyg_no_buyer['学籍番号'].values)
+        _successfully_matched_ids.extend(self.cms_jyg_acc[self._cms_cols.student_id].values)
+        _successfully_matched_ids.extend(self.cms_jyg_no_buyer[self._cms_cols.student_id].values)
         # -- これを含まないCMSデータだけ取得
-        self._cms_newbee_unmatched = self._cms_data.data[~self._cms_data.data['学籍番号'].isin(_successfully_matched_ids)].copy()
-        __target_cols = ['id', '学籍番号', '生徒名', '教科書タイトル', '副教材タイプ']
+        self._cms_newbee_unmatched = self._cms_data.data[~self._cms_data.data[self._cms_cols.student_id].isin(_successfully_matched_ids)].copy()
+        __target_cols = [
+            self._cms_cols.id,
+            self._cms_cols.student_id,
+            self._cms_cols.student_name,
+            DICTYPE_COL_NAME
+        ]
         self._cms_newbee_unmatched = self._cms_newbee_unmatched[__target_cols]
         self._cms_newbee_unmatched.reset_index(drop=True, inplace=True)
 
