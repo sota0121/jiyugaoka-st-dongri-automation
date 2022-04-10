@@ -22,14 +22,14 @@ def cleanup_result_files():
 st.title('Students and Accounts Linking Automation')
 st.header('File Upload')
 
-st.subheader('1. CMS DATA (CSV/SHIFT-JIS)')
+st.subheader('1. CMS DATA (CSV/UTF-8)')
 _cms_file = st.file_uploader(label="Choose a file", key="cms_data")
 
-st.subheader('2. DONGURI DATA (EXCEL/SHIFT-JIS) - 5辞書')
-_donguri5_file = st.file_uploader(label="Choose a file", key="d5_data")
+st.subheader('2. DONGURI DATA (EXCEL/SHIFT-JIS) - 6辞書')
+_donguri6_file = st.file_uploader(label="Choose a file", key="d6_data")
 
-st.subheader('3. DONGURI DATA (EXCEL/SHIFT-JIS) - 2辞書')
-_donguri2_file = st.file_uploader(label="Choose a file", key="d2_data")
+st.subheader('3. DONGURI DATA (EXCEL/SHIFT-JIS) - 3辞書')
+_donguri3_file = st.file_uploader(label="Choose a file", key="d3_data")
 
 st.subheader('4. STUDENT DATA from School Test (CSV/UTF-8)')
 _jyg_file = st.file_uploader(label="Choose a file", key="jyg_data")
@@ -38,12 +38,12 @@ _jyg_file = st.file_uploader(label="Choose a file", key="jyg_data")
 st.header('Execution')
 executable = False
 pressed = False
-if (_cms_file is not None) and (_donguri5_file is not None) and (
-        _donguri2_file is not None) and (_jyg_file is not None):
+if (_cms_file is not None) and (_donguri6_file is not None) and (
+        _donguri3_file is not None) and (_jyg_file is not None):
     executable = True
 
 if executable is True:
-    executor = ShiraishiExecutor(_cms_file, _donguri5_file, _donguri2_file, _jyg_file)
+    executor = ShiraishiExecutor(_cms_file, _donguri6_file, _donguri3_file, _jyg_file)
     pressed = st.button(label="Execute", key="exec_main", on_click=executor.main_func)
 
 if pressed == True:
