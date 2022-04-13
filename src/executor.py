@@ -86,9 +86,9 @@ class CmsData:
 
     def calc_dict_buy_type(self) -> None:
         self.data[self.cols.prod_name] = self.data[self.cols.prod_name].str.replace(
-            pat="【アプリ版辞書】DONGURI(3辞書)", repl=self.dictype.DIC_3)
+            pat="【アプリ版辞書】DONGURI(3辞書)", repl=self.dictype.DIC_3, regex=False)
         self.data[self.cols.prod_name] = self.data[self.cols.prod_name].str.replace(
-            pat="【アプリ版辞書】DONGURI(6辞書)", repl=self.dictype.DIC_6)
+            pat="【アプリ版辞書】DONGURI(6辞書)", repl=self.dictype.DIC_6, regex=False)
 
         self.data[DICTYPE_COL_NAME] = self.data[self.cols.prod_name]
 
@@ -221,6 +221,12 @@ class ShiraishiExecutor:
         __merged_cms_jiyu_d3 = self._merged_cms_jiyu[self._merged_cms_jiyu[DICTYPE_COL_NAME] == buying_dic_type.DIC_3].copy()
         __merged_cms_jiyu_dN = self._merged_cms_jiyu[self._merged_cms_jiyu[DICTYPE_COL_NAME] == buying_dic_type.DIC_NONE].copy()
         __merged_cms_jiyu_NaN = self._merged_cms_jiyu[self._merged_cms_jiyu[DICTYPE_COL_NAME] == buying_dic_type.NULL].copy()
+
+        # debug
+        print()
+        print(self._merged_cms_jiyu.columns)
+        print(self._merged_cms_jiyu[DICTYPE_COL_NAME].unique())
+        # debug
 
         _total_row = self._merged_cms_jiyu.shape[0]
 
