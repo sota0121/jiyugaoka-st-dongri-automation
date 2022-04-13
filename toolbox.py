@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import chardet
 import click
 import pandas as pd
@@ -53,6 +55,39 @@ def test(input: str):
     a, b = input
     pdfkit.from_file(["list.html", "list2.html"], "list-2.pdf")
     click.echo("Done")
+
+
+@tb.command(name='tmp-cnv')
+@click.option("--input", "-i", type=str, help="Input file", required=True)
+def tmp_cnv(input: str):
+    """
+    Transform 2022 fmt --> 2021 fmt
+    DONGURI account csv
+
+        This is Temporary function.
+    """
+    # load
+    click.echo(f"load ... {input}")
+    df_2022fmt = pd.read_csv(input)
+
+    # split 6dic/3dic
+    df_2022fmt_6dic = df_2022fmt[df_2022fmt['備考'].str.contains('ジーニアス５辞書')].copy()
+    df_2022fmt_3dic = df_2022fmt[df_2022fmt['備考'].str.contains('ジーニアス英和/和英')].copy()
+
+    # extract columns to export
+    target_cols_2021fmt = ['ユーザー名', 'グループ名', '一時パスワード']
+    df_2021fmt_6dic = df_2022fmt_6dic[target_cols_2021fmt].copy()
+    df_2021fmt_3dic = df_2022fmt_3dic[target_cols_2021fmt].copy()
+
+    # export
+    odir = Path(input).parent
+    fstem = Path(input).stem
+
+    df_2021fmt_6dic.to_excel(odir / f"{fstem}_6dic.xlsx", index=False)
+    df_2021fmt_3dic.to_excel(odir / f"{fstem}_3dic.xlsx", index=False)
+
+    click.echo("Done")
+
 
 
 if __name__ == "__main__":
