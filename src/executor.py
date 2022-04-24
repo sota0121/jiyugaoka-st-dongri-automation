@@ -26,6 +26,10 @@ SHN_REST_DONGURI_ACC_6DIC: Final[str] = "6辞書アカウント"
 SHN_REST_DONGURI_ACC_3DIC: Final[str] = "3辞書アカウント"
 
 
+PROD_NAME_DIC3: Final[str] = "【アプリ版辞書】DONGURI(3辞書)"
+PROD_NAME_DIC6: Final[str] = "【アプリ版辞書】DONGURI(6辞書)"
+
+
 @dataclass
 class BuyingDicType:
     DIC_6: str='6辞書'
@@ -61,14 +65,24 @@ class CmsData:
         self.load_prep(csv_file)
 
     def load_prep(self, csv_file) -> None:
+        """load and preparation"""
+
+        # load csv file
         col_names = list(asdict(self.cols).values())
         self.data = pd.read_csv(
             csv_file,
             names=col_names,
             encoding="utf-8")
-        self.data.drop_duplicates(subset=[self.cols.student_id], inplace=True)
 
-        # prep : XXX(kana) --> XXX
+        # ----------------------------
+        # preparation
+        # ----------------------------
+        # drop (student_id & prod_name) duplicated rows
+        self.data.drop_duplicates(
+            subset=[self.cols.student_id, self.cols.prod_name],
+            inplace=True)
+
+        # convert XXX(kana) --> XXX
         _temp = self.data[self.cols.student_name].copy()
         _temp = _temp.str.split('(', expand=True)[0] # exclude (kana)
         _temp = _temp.str.strip() # remove white space
@@ -85,12 +99,82 @@ class CmsData:
         return self.data[self.cols.student_name].copy()
 
     def calc_dict_buy_type(self) -> None:
-        self.data[self.cols.prod_name] = self.data[self.cols.prod_name].str.replace(
-            pat="【アプリ版辞書】DONGURI(3辞書)", repl=self.dictype.DIC_3, regex=False)
-        self.data[self.cols.prod_name] = self.data[self.cols.prod_name].str.replace(
-            pat="【アプリ版辞書】DONGURI(6辞書)", repl=self.dictype.DIC_6, regex=False)
+        """calculate dict buy type
 
-        self.data[DICTYPE_COL_NAME] = self.data[self.cols.prod_name]
+            ### input
+
+            ```
+            | id | student_id | student_name | ... | prod_name |
+            |----|------------|--------------|-----|-----------|
+            | 1  | 123        | taro         | ... | 特進S1年   |
+            | 2  | 123        | taro         | ... | X(3辞書)   |
+            | 3  | 456        | jiro         | ... | 特進S1年   |
+            | 4  | 789        | goro         | ... | 特進S1年   |
+            | 5  | 789        | goro         | ... | X(6辞書)   |
+            ```
+
+            ### output
+
+            ```
+            | id | student_id | student_name | ... | 副教材タイプ |
+            |----|------------|--------------|-----|------------|
+            | 1  | 123        | taro         | ... | 3dic       |
+            | 2  | 456        | jiro         | ... | 購入しない   |
+            | 3  | 789        | goro         | ... | 6dic       |
+            ```
+
+        """
+        # --------------------------------------------------------
+        # Get Unique Student ID
+        # --------------------------------------------------------
+        uniq_student_id = self.get_student_id().unique()
+
+        # --------------------------------------------------------
+        # Judge dict buy type by student_id
+        # --------------------------------------------------------
+        dictype_by_uniq_students = []
+        for student_id in uniq_student_id:
+            student_orders = self.data[self.data[self.cols.student_id] == student_id].copy()
+
+            # judge dict buy type
+            if student_orders[self.cols.prod_name].isin([PROD_NAME_DIC6]).any():
+                # 6dic
+                dictype_by_uniq_students.append(self.dictype.DIC_6)
+            elif student_orders[self.cols.prod_name].isin([PROD_NAME_DIC3]).any():
+                # 3dic
+                dictype_by_uniq_students.append(self.dictype.DIC_3)
+            else:
+                # 購入しない
+                dictype_by_uniq_students.append(self.dictype.DIC_NONE)
+
+        co_student_id_col = 'co_student_id'
+        _df_id_dictype = pd.DataFrame(
+            data={
+                co_student_id_col: uniq_student_id,
+                DICTYPE_COL_NAME: dictype_by_uniq_students}
+            )
+
+
+        # --------------------------------------------------------
+        # Squash to 1 record per student_id
+        # --------------------------------------------------------
+        squashed_data = self.data.copy()
+        squashed_data = squashed_data.drop_duplicates(subset=[self.cols.student_id])
+
+        # --------------------------------------------------------
+        # Set dict buy type
+        # --------------------------------------------------------
+        new_df = pd.merge(
+            left=squashed_data,
+            right=_df_id_dictype,
+            left_on=self.cols.student_id,
+            right_on=co_student_id_col,
+            how='left')
+        self.data = new_df.copy()
+
+        # debug
+        self.data.to_csv('output.csv', index=False)
+
 
 
 class DonguriAccount:
