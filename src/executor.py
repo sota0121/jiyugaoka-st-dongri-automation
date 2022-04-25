@@ -174,7 +174,7 @@ class CmsData:
         self.data = new_df.copy()
 
         # debug
-        self.data.to_csv('output.csv', index=False)
+        self.data.to_csv('output-calcdictype.csv', index=False)
 
 
 
@@ -282,6 +282,8 @@ class ShiraishiExecutor:
 
         # '副教材タイプ' fill na -> BuyingDicType.NULL
         self._merged_cms_jiyu[DICTYPE_COL_NAME].fillna(buying_dic_type.NULL, inplace=True)
+
+        self._merged_cms_jiyu.to_csv('output-merged.csv')
 
 
     def __concat_donguri_acc_and_cmsjyg(self):

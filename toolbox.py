@@ -5,6 +5,8 @@ import click
 import pandas as pd
 import pdfkit
 
+from src.executor import ShiraishiExecutor
+
 
 @click.group(name="tb", help="Toolbox cli")
 def tb():
@@ -88,6 +90,24 @@ def tmp_cnv(input: str):
 
     click.echo("Done")
 
+
+@tb.command(name='emulator')
+@click.option("--input-cms", "-ic", type=str, help="Input file - CMS Data (CSV/UTF-8)", required=True)
+@click.option("--input-dic6", "-id6", type=str, help="Input file - Dict Accounts 6dic (xlsx)", required=True)
+@click.option("--input-dic3", "-id3", type=str, help="Input file - Dict Accounts 3dic (xlsx)", required=True)
+@click.option("--input-schooltest", "-ist", type=str, help="Input file - School Test Data (CSV/UTF-8)", required=True)
+def emulator(input_cms: str, input_dic6: str, input_dic3: str, input_schooltest: str):
+    """Streamlit App Emulator"""
+    _cms_file = open(input_cms, "rb")
+    _donguri6_file = open(input_dic6, "rb")
+    _donguri3_file = open(input_dic3, "rb")
+    _schooltest_file = open(input_schooltest, "rb")
+
+    executor = ShiraishiExecutor(_cms_file, _donguri6_file, _donguri3_file, _schooltest_file)
+    click.echo(f"executor created")
+    click.echo(f"start to execute main process")
+    executor.main_func()
+    click.echo("Done")
 
 
 if __name__ == "__main__":
