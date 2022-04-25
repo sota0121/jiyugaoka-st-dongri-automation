@@ -1,0 +1,41 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: tb emulator",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "emulator",
+                "-ic",
+                "./data/2022-prod/rakuby-jyg-order-data_20220422.csv",
+                "-id6",
+                "./data/2022-prod/220412_jiyugaoka_donguri_6dic.xlsx",
+                "-id3",
+                "./data/2022-prod/220418_jiyugaoka_donguri_3dic.xlsx",
+                "-ist",
+                "./data/2022-prod/R4_DONGRI用データ（自由ケ丘→白石書店様）.csv.utf8.csv"
+            ],
+            "justMyCode": true
+        },
+        {
+            "name": "Python: tb test command",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "test",
+                "-i",
+                "list.html",
+                "list2.html"
+            ],
+            "justMyCode": false
+        }
+    ]
+}
