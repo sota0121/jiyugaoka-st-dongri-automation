@@ -90,6 +90,28 @@ class CmsData:
         _temp = _temp.str.replace("　", "") # remove ZENKAKU space
         self.data[self.cols.student_name] = _temp.copy()
 
+        # ----------------------------
+        # Hotfix Data Transformation
+        # -----
+        # - 学籍番号が空の場合、異なる生徒間で学籍番号が重複してしまうための対応
+        # - ただし、この対応でも網羅できないケースがある
+        #   - 空文字ではない値で、生徒間で学籍番号が重複しているケース
+        #   - 同一メールアドレスの生徒が複数学籍番号を空にしているケース
+        # -----
+        # - 恒久対応は、そもそも学籍番号が重複したデータを作らないようにシステムを改修すること
+        # ----------------------------
+        # 学籍番号が空の生徒のアドレス一覧(unique)を取得
+        empty_id_students = self.data[self.data[self.cols.student_id].isna()].copy()
+        empty_id_students = empty_id_students[self.cols.email].unique()
+
+        # 仮のIDを生徒ごとに割り振る
+        for i, email in enumerate(empty_id_students):
+            virtual_id = 'empty_id_' + str(i)
+            self.data.loc[self.data[self.cols.email] == email, self.cols.student_id] = virtual_id
+
+        self.data.to_csv('output-loadprep.csv', index=False)
+
+
     def get_student_id(self) -> pd.Series:
         return self.data[self.join_target_col()].copy()
 
