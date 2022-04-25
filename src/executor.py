@@ -77,9 +77,10 @@ class CmsData:
         # ----------------------------
         # preparation
         # ----------------------------
-        # drop (student_id & prod_name) duplicated rows
+        # drop (student_id & name & prod_name) duplicated rows
+        # causion! empty student_id exists
         self.data.drop_duplicates(
-            subset=[self.cols.student_id, self.cols.prod_name],
+            subset=[self.cols.student_id, self.cols.student_name, self.cols.prod_name],
             inplace=True)
 
         # convert XXX(kana) --> XXX
