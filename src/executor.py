@@ -77,9 +77,10 @@ class CmsData:
         # ----------------------------
         # preparation
         # ----------------------------
-        # drop (student_id & prod_name) duplicated rows
+        # drop (student_id & name & prod_name) duplicated rows
+        # causion! empty student_id exists
         self.data.drop_duplicates(
-            subset=[self.cols.student_id, self.cols.prod_name],
+            subset=[self.cols.student_id, self.cols.student_name, self.cols.prod_name],
             inplace=True)
 
         # convert XXX(kana) --> XXX
@@ -173,7 +174,7 @@ class CmsData:
         self.data = new_df.copy()
 
         # debug
-        self.data.to_csv('output.csv', index=False)
+        self.data.to_csv('output-calcdictype.csv', index=False)
 
 
 
@@ -281,6 +282,8 @@ class ShiraishiExecutor:
 
         # '副教材タイプ' fill na -> BuyingDicType.NULL
         self._merged_cms_jiyu[DICTYPE_COL_NAME].fillna(buying_dic_type.NULL, inplace=True)
+
+        self._merged_cms_jiyu.to_csv('output-merged.csv')
 
 
     def __concat_donguri_acc_and_cmsjyg(self):
