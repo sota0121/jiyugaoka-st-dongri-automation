@@ -6,6 +6,7 @@ import pandas as pd
 import pdfkit
 
 from src.executor import ShiraishiExecutor
+from src.executor import StatsManager
 
 
 @click.group(name="tb", help="Toolbox cli")
@@ -108,6 +109,19 @@ def emulator(input_cms: str, input_dic6: str, input_dic3: str, input_schooltest:
     click.echo(f"start to execute main process")
     executor.main_func()
     click.echo("Done")
+
+
+@tb.command(name='stats', help="Show statistics of the input file (rakubuy order, CSV/UTF8)")
+@click.option("--input", "-i", type=str, help="Input file", required=True)
+def stats(input: str):
+    """
+    Show statistics of the input file (rakubuy order, CSV/UTF8)
+    """
+    stats_manager = StatsManager()
+    stats_manager.load_cms_data(input)
+    stats_manager.aggregate_cms_data()
+
+    stats_result = stats_manager.get_stats()
 
 
 if __name__ == "__main__":

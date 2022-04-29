@@ -445,3 +445,90 @@ class ShiraishiExecutor:
         with pd.ExcelWriter(FP_REST_DONGURI_ACC) as writer:
             self._dongri_data_6dic.get_rest_of().to_excel(writer, sheet_name=SHN_REST_DONGURI_ACC_6DIC, index=False)
             self._dongri_data_3dic.get_rest_of().to_excel(writer, sheet_name=SHN_REST_DONGURI_ACC_3DIC, index=False)
+
+
+
+class StatsManager:
+    """statistics manager
+
+        - 統計情報を管理する
+        - 出力する
+    """
+    def __init__(self):
+        self._cms_cols = CmsDataCols()
+        self._stats = {}
+
+    def load_cms_data(self, cms_path: str):
+        """load cms data
+
+            - cms_path: str
+                - cms data path
+        """
+        cms_file = open(cms_path, 'rb')
+        cms_data_obj = CmsData(cms_file)
+        self._stats['cms_path'] = cms_path
+        self._stats['cms_data'] = cms_data_obj.data
+
+    def get_stats(self) -> dict:
+        """get statistics
+
+            - return: dict
+                - statistics
+        """
+        return self._stats
+
+    def aggregate_cms_data(self):
+        """aggregate cms data
+
+            - cms_data: pd.DataFrame
+                - cms data
+        """
+        cms_data = self._stats['cms_data']
+
+        # --------------------------------------------------
+        # Contents
+        # 1. 全生徒数（学籍番号ユニーク） - S1
+        # 2. 全生徒数（名前ユニーク） - S2
+        # 3. 6辞書購入者総数 - A
+        # 4. 3辞書購入者総数 - B
+        # 5. 辞書非購入者総数（S1 - (A+B) and S2 - (A+B)）
+        # 6. 辞書非購入者総数（購入履歴から抽出ロジックを実装ーアプリで使ってるもの）
+        # --------------------------------------------------
+        # 1. 全生徒数（学籍番号ユニーク） - S1
+        unique_sid_arr = cms_data[self._cms_cols.student_id].unique()
+        self._stats['S1'] = len(unique_sid_arr)
+        # print('[INFO] 全生徒数（学籍番号ユニーク）: {}'.format(len(unique_sid_arr)))
+
+        # 2. 全生徒数（名前ユニーク） - S2
+        unique_sname_arr = cms_data[self._cms_cols.student_name].unique()
+        self._stats['S2'] = len(unique_sname_arr)
+        # print('[INFO] 全生徒数（名前ユニーク）: {}'.format(len(unique_sname_arr)))
+
+        # 2.5. 全生徒数（学籍番号＆名前ユニーク） - S3
+        _df = cms_data.copy()
+        unique_id_name_arr = _df.drop_duplicates(subset=[self._cms_cols.student_id, self._cms_cols.student_name])
+        self._stats['S3'] = unique_id_name_arr.shape[0]
+        print('[INFO] 全生徒数（学籍番号＆名前ユニーク）: {}'.format(unique_id_name_arr.shape[0]))
+
+        # 3. 6辞書購入者総数 - A
+        dic6_orders = cms_data[cms_data[self._cms_cols.prod_name].str.contains(PROD_NAME_DIC6, regex=False)]
+        self._stats['A'] = dic6_orders.shape[0]
+        print('[INFO] 6辞書購入者総数: {}'.format(dic6_orders.shape[0]))
+
+        # 4. 3辞書購入者総数 - B
+        dic3_orders = cms_data[cms_data[self._cms_cols.prod_name].str.contains(PROD_NAME_DIC3, regex=False)]
+        self._stats['B'] = dic3_orders.shape[0]
+        print('[INFO] 3辞書購入者総数: {}'.format(dic3_orders.shape[0]))
+
+        # 5. 辞書非購入者総数（S1 - (A+B) and S2 - (A+B)）
+        self._stats['S1_minus_A_plus_B'] = self._stats['S1'] - (self._stats['A'] + self._stats['B'])
+        self._stats['S2_minus_A_plus_B'] = self._stats['S2'] - (self._stats['A'] + self._stats['B'])
+        self._stats['S3_minus_A_plus_B'] = self._stats['S3'] - (self._stats['A'] + self._stats['B'])
+
+        # print('[INFO] 辞書非購入者総数: S1 - (A+B): {}'.format(self._stats['S1_minus_A_plus_B']))
+        # print('[INFO] 辞書非購入者総数: S2 - (A+B): {}'.format(self._stats['S2_minus_A_plus_B']))
+        print('[INFO] 辞書非購入者総数: S3 - (A+B): {}'.format(self._stats['S3_minus_A_plus_B']))
+
+        # 6. 辞書非購入者総数（購入履歴から抽出ロジックを実装ーアプリで使ってるもの）
+        print("[INFO] 辞書非購入者総数（購入履歴から抽出ロジックを実装ーアプリで使ってるもの） - NotImplemented")
+
